@@ -9,3 +9,5 @@ dist/
 *.db
 *.sqlite
 *.sqlite3
+site-deploy.tar.gz
+tsconfig.tsbuildinfo
