@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,6 +18,7 @@ export default function Home() {
   const [view, setView] = useState<View>("ALL");
   const [date, setDate] = useState("ALL");
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -83,7 +84,7 @@ export default function Home() {
     <section className="metrics" aria-label="汇总"><div><span>成交笔数</span><strong>{number(summary.count)}</strong></div><div><span>买入成交额</span><strong>{money(summary.buy)}</strong></div><div><span>卖出成交额</span><strong>{money(summary.sell)}</strong></div><div><span>净手续费</span><strong className={summary.fees < 0 ? "negative" : summary.fees > 0 ? "positive" : ""}>{signedMoney(summary.fees)}</strong><small>收到 {signedMoney(summary.feeIncome)} · 支出 {signedMoney(summary.feeExpense)}</small></div><div><span>净现金流</span><strong className={summary.cash < 0 ? "negative" : "positive"}>{money(summary.cash)}</strong></div></section>
     <section className="ledger"><div className="toolbar"><div className="tabs" role="group" aria-label="资产类别">{([["ALL", "全部"], ["STK", "股票"], ["OPT", "期权"]] as const).map(([value, label]) =>
       <button key={value} className={view === value ? "active" : ""} onClick={() => setView(value)}>{label}<span>{value === "ALL" ? trades.length : trades.filter(x => x.assetClass === value).length}</span></button>)}</div>
-      <div className="filters"><label>交易日<select value={date} onChange={e => setDate(e.target.value)}><option value="ALL">所有日期</option>{dates.map(d => <option key={d} value={d}>{d}</option>)}</select></label><Input aria-label="搜索标的" placeholder="搜索代码或名称" value={query} onChange={e => setQuery(e.target.value)} /></div></div>
+      <div className="filters"><label>交易日<select value={date} onChange={e => setDate(e.target.value)}><option value="ALL">所有日期</option>{dates.map(d => <option key={d} value={d}>{d}</option>)}</select></label><div className="search-control"><Input ref={searchRef} aria-label="搜索标的" placeholder="搜索代码或名称" value={query} onChange={e => setQuery(e.target.value)} />{query && <Button type="button" variant="ghost" size="icon-sm" className="clear-search" aria-label="清除搜索" title="清除搜索" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>×</Button>}</div></div></div>
       {groups.length ? groups.map(([day, rows]) => <div className="day" key={day}><div className="day-heading"><h2>{day}</h2><span>{rows.length} 笔成交 · 净手续费 {signedMoney(rows.reduce((sum, x) => sum + x.commission, 0))}</span></div>
         <div className="table-wrap"><Table><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类别 / 标的</TableHead><TableHead>方向</TableHead><TableHead className="right">数量</TableHead><TableHead className="right">成交价</TableHead><TableHead className="right">成交额</TableHead><TableHead className="right">手续费</TableHead><TableHead className="right">净现金流</TableHead></TableRow></TableHeader>
         <TableBody>{rows.map(x => <TableRow key={x.key}><TableCell className="mono muted">{x.time || "—"}</TableCell><TableCell><div className="symbol"><b>{x.symbol}</b><span>{assetName(x.assetClass)}</span></div><small className="description">{x.assetClass === "OPT" ? `${x.expiry || ""} ${x.strike || ""} ${x.putCall || ""} · ${x.multiplier}×` : x.description}</small></TableCell><TableCell><span className={x.side === "BUY" ? "side buy" : "side sell"}>{x.side === "BUY" ? "买入" : "卖出"}</span></TableCell><TableCell className="right mono">{number(x.quantity)}</TableCell><TableCell className="right mono">{money(x.price, x.currency)}</TableCell><TableCell className="right mono">{money(Math.abs(x.proceeds), x.currency)}</TableCell><TableCell className={`right mono ${x.commission < 0 ? "negative" : x.commission > 0 ? "positive" : "muted"}`}>{signedMoney(x.commission, x.currency)}</TableCell><TableCell className={`right mono ${x.netCash < 0 ? "negative" : "positive"}`}>{money(x.netCash, x.currency)}</TableCell></TableRow>)}</TableBody></Table></div></div>) :
