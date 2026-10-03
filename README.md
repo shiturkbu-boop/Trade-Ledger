@@ -26,7 +26,7 @@ The MCP import and status tools require the platform verified email to equal the
 4. Call the connected Site's `verify_flex_csv` for every CSV attachment in that message. Require `verified: true` and `missingExecutions: 0`; this tool reads back every execution key from the database. A rerun that adds zero rows still succeeds when all execution IDs are already present. A count or latest-date check alone is insufficient for clearing the label.
 5. Only after that readback succeeds, remove the `TradeConfirmationFlexProcessNeeded` label from that exact Gmail message ID using Gmail's label action. Preserve the message and other labels. Verify the pending label is gone. On a Gmail, parsing, Site write, or readback failure, leave the pending label in place and report the failure so the next run can retry.
 
-Suggested run: weekdays at 14:00 Asia/Hong_Kong, after the usual forwarded confirmation arrives. Search all still-labeled messages each run so late mail and retries are caught; unique execution IDs prevent duplicates. This task must be created only after a fresh cloud run verifies both Gmail and the Site's owner-authenticated import tool.
+Requested schedule: every Tuesday through Saturday at 05:00 Asia/Hong_Kong. Search all still-labeled messages each run so mail arriving after 05:00 and retries are caught on the next run; unique execution IDs prevent duplicates. In particular, a Saturday confirmation arriving after the Saturday run remains labeled until Tuesday at 05:00. Create and enable this task only after a fresh cloud run verifies both Gmail and the Site's owner-authenticated import and verification tools.
 
 ## Local
 
