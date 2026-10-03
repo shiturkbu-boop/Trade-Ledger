@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.next/
+.sites-runtime/
+.wrangler/
+.env*
+!.env.example
+*.csv
+*.db
+*.sqlite
+*.sqlite3
