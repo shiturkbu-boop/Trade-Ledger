@@ -6,7 +6,9 @@ Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individu
 
 Open the owner-private Site and choose **导入 Flex CSV**. It validates the IBKR header, imports at most 5,000 records per file, and ignores duplicate executions. No trade data belongs in this source repository. Do not commit real CSVs, account IDs, email contents, credentials, or database exports.
 
-The summary reports gross buy/sell proceeds, absolute commissions, and the sum of IBKR NetCash. It does not compute position cost basis or realized P&L. For mixed currencies, the top summary currently displays USD notation and should only be used with USD reports.
+The summary reports gross buy/sell proceeds, signed commissions, and the sum of IBKR NetCash. Positive commission is income or rebate; negative commission is an expense. The fee card shows income, expense, and net separately. It does not compute position cost basis or realized P&L. For mixed currencies, the top summary currently displays USD notation and should only be used with USD reports.
+
+PDF export opens the browser print dialog for Save as PDF with a landscape report layout. PNG export downloads the current filtered result, splitting it into numbered images every 42 executions so large reports do not exceed browser canvas limits. Both exports include the current asset, date, and symbol filters and signed commission values.
 
 ## Data source and future automation
 
