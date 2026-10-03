@@ -20,12 +20,13 @@ The MCP import and status tools require the platform verified email to equal the
 
 ### Daily update procedure after the owner connects the Site plugin
 
-1. Search Gmail with `label:tradeconfirmationflexprocessneeded has:attachment`. Read all unprocessed Flex confirmations since the last successful run, using the report date from the subject or filename as the trade date. Do not mark or delete messages merely to track progress.
+1. Search Gmail with `label:tradeconfirmationflexprocessneeded has:attachment`. Read each labeled Flex confirmation, using the report date from the subject or filename as the trade date. Keep the exact Gmail message ID and the set of CSV execution IDs until processing finishes.
 2. For each message, use Gmail's attachment reader when supported. If its CSV is reported as `application/octet-stream` with `read_attachment_supported: false`, read the message in `raw` format and decode the MIME attachment's base64 bytes. Only select a `flex.*.csv` attachment from a matching confirmation; do not treat the message body as CSV.
 3. Call the connected Site's `import_flex_csv` tool once per CSV. It validates the IBKR header and deduplicates by account and ExecID. A rerun is safe. Keep CSV/account contents out of public repository commits, logs, and task instructions.
-4. Call `ledger_status` after imports and confirm the count or latest trade date advanced as expected. On Gmail or Site failure, report it and retry in the next scheduled run; never claim an import succeeded from a search result alone.
+4. Call the connected Site's `verify_flex_csv` for every CSV attachment in that message. Require `verified: true` and `missingExecutions: 0`; this tool reads back every execution key from the database. A rerun that adds zero rows still succeeds when all execution IDs are already present. A count or latest-date check alone is insufficient for clearing the label.
+5. Only after that readback succeeds, remove the `TradeConfirmationFlexProcessNeeded` label from that exact Gmail message ID using Gmail's label action. Preserve the message and other labels. Verify the pending label is gone. On a Gmail, parsing, Site write, or readback failure, leave the pending label in place and report the failure so the next run can retry.
 
-Suggested run: weekdays at 14:00 Asia/Hong_Kong, after the usual forwarded confirmation arrives. Search overlapping messages each run so late mail is caught; unique execution IDs prevent duplicates. This task must be created only after a fresh cloud run verifies both Gmail and the Site's owner-authenticated import tool.
+Suggested run: weekdays at 14:00 Asia/Hong_Kong, after the usual forwarded confirmation arrives. Search all still-labeled messages each run so late mail and retries are caught; unique execution IDs prevent duplicates. This task must be created only after a fresh cloud run verifies both Gmail and the Site's owner-authenticated import tool.
 
 ## Local
 

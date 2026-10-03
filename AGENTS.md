@@ -11,3 +11,5 @@ For each Site change:
 4. Keep the Sites private database and production secrets out of GitHub. GitHub is the version-controlled public source mirror; it does not replace the Site's deployment repository or database.
 
 If a requested change only concerns data in the private database and does not modify source, do not publish private records to GitHub. If one side cannot be updated, report the exact incomplete side.
+
+For Gmail Flex updates, clear the `TradeConfirmationFlexProcessNeeded` label only from a specific message whose CSV executions have all been imported and read back from the private Site. Leave the message and its other labels intact. On partial or uncertain results, retain the pending label for retry.

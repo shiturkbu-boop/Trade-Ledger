@@ -1,6 +1,6 @@
 import { getDb } from "@/db";
 import { trades } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { parseFlexCsv } from "@/lib/flex";
 import { env } from "cloudflare:workers";
 
@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   if (body.method === "tools/list") return json(id, { tools: [tool, {
     name: "ledger_status", description: "Read the latest imported trade date and execution count in the owner's private ledger.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  }, {
+    name: "verify_flex_csv", description: "Read back every execution in an IBKR Flex CSV and report whether all are stored. Use before clearing the Gmail pending label.",
+    inputSchema: tool.inputSchema,
   }] });
   if (body.method !== "tools/call") return fail(id, -32601, "Unknown method");
   const ownerEmail = (env as unknown as { LEDGER_OWNER_EMAIL?: string }).LEDGER_OWNER_EMAIL;
@@ -35,6 +38,24 @@ export async function POST(request: Request) {
       const rows = await getDb().select({ date: trades.tradeDate }).from(trades).orderBy(desc(trades.tradeDate)).limit(10000);
       return json(id, { content: [{ type: "text", text: JSON.stringify({ count: rows.length, latestTradeDate: rows[0]?.date ?? null }) }] });
     } catch { return fail(id, -32000, "Ledger data unavailable", 503); }
+  }
+  if (body.params?.name === "verify_flex_csv") {
+    const csv = body.params.arguments?.csv;
+    if (typeof csv !== "string" || csv.length > 2_000_000) return fail(id, -32602, "CSV text is required and must be under 2 MB");
+    try {
+      const parsed = parseFlexCsv(csv);
+      if (parsed.length > 5000) return fail(id, -32602, "At most 5,000 executions per verification");
+      const keys = [...new Set(parsed.map(row => row.key))];
+      const stored = new Set<string>();
+      for (let i = 0; i < keys.length; i += 200) {
+        const found = await getDb().select({ key: trades.key }).from(trades).where(inArray(trades.key, keys.slice(i, i + 200)));
+        found.forEach(row => stored.add(row.key));
+      }
+      const missing = keys.filter(key => !stored.has(key)).length;
+      return json(id, { content: [{ type: "text", text: JSON.stringify({ totalExecutions: keys.length, storedExecutions: stored.size, missingExecutions: missing, verified: missing === 0 }) }] });
+    } catch (error) {
+      return json(id, { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : "Verification failed" }] });
+    }
   }
   if (body.params?.name !== tool.name) return fail(id, -32602, "Unknown tool");
   const csv = body.params.arguments?.csv;
