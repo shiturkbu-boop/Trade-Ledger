@@ -1,4 +1,5 @@
 import type { Trade } from "./flex";
+import { assetName } from "./assets";
 
 type ExportSummary = { buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number };
 type ExportOptions = { trades: Trade[]; scope: string; summary: ExportSummary };
@@ -67,8 +68,8 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       const y = top + i * 44;
       ctx.fillStyle = i % 2 ? "#111e2d" : "#152335"; ctx.fillRect(56, y + 5, W - 112, 43);
       const values = [
-        `${t.tradeDate} ${t.time}`, `${t.symbol}  ${t.assetClass === "STK" ? "股票" : t.assetClass === "OPT" ? "期权" : t.assetClass}`,
-        t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), fmt(t.price, t.currency),
+        `${t.tradeDate} ${t.time}`, `${t.symbol}  ${assetName(t.assetClass)}`,
+        t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), t.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: t.currency, maximumFractionDigits: 6 }).format(t.price) : fmt(t.price, t.currency),
         fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), fmt(t.netCash, t.currency),
       ];
       ctx.font = "14px Arial, sans-serif";

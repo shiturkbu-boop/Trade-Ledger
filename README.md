@@ -1,6 +1,6 @@
 # IBKR Flex Trade Ledger
 
-Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individual executions in Sites D1, deduplicated by ClientAccountID and ExecID, and groups fills by trade date. Stock and option are the first filters; unfamiliar asset classes remain stored and visible under All.
+Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individual executions in Sites D1, deduplicated by ClientAccountID and ExecID, and groups fills by trade date. Asset filters cover STK (stocks), OPT (options), FUT (futures), and CASH (spot Forex). Unfamiliar asset classes remain stored and visible under All. Futures display expiry when available and contract multiplier; category names are shared by the dashboard and PNG export.
 
 ## Import
 
