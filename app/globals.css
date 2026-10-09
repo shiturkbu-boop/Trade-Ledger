@@ -58,3 +58,6 @@ footer { color:#6f8397;font-size:12px;padding:22px 0 40px; }
   .symbol b { font-size:11px; }.symbol span { color:#333;background:#eee;font-size:9px; }.description { color:#555;font-size:9px;max-width:170px; }
   .negative { color:#a52739!important; }.positive { color:#176b37!important; }.muted { color:#555!important; }
 }
+
+.cash-note { color:#9badbd;font-size:13px;line-height:1.6;margin:14px 0 0; }
+@media print { .cash-note { color:#444;font-size:10px; } }

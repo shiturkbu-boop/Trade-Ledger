@@ -1,7 +1,8 @@
 import type { Trade } from "./flex";
 import { assetName } from "./assets";
+import { futuresCashNote, tradeCashFlow } from "./cash-flow";
 
-type ExportSummary = { buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number };
+type ExportSummary = { buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number | null };
 type ExportOptions = { trades: Trade[]; scope: string; summary: ExportSummary };
 const W = 1440;
 const PAGE_ROWS = 42;
@@ -45,7 +46,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
         ["手续费收入", signed(summary.feeIncome)],
         ["手续费支出", signed(summary.feeExpense)],
         ["净手续费", signed(summary.fees)],
-        ["净现金流", fmt(summary.cash)],
+        ["净现金流", summary.cash === null ? "NA（缺少期货结算数据）" : fmt(summary.cash)],
       ];
       cards.forEach(([label, value], i) => {
         const x = 56 + (i % 4) * 335, y = 154 + Math.floor(i / 4) * 70;
@@ -70,7 +71,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       const values = [
         `${t.tradeDate} ${t.time}`, `${t.symbol}  ${assetName(t.assetClass)}`,
         t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), t.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: t.currency, maximumFractionDigits: 6 }).format(t.price) : fmt(t.price, t.currency),
-        fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), fmt(t.netCash, t.currency),
+        fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), tradeCashFlow(t) === null ? "NA（待结算数据）" : fmt(t.netCash, t.currency),
       ];
       ctx.font = "14px Arial, sans-serif";
       values.forEach((value, j) => {
@@ -80,7 +81,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       });
     });
     ctx.textAlign = "left"; ctx.fillStyle = "#8fa2b4"; ctx.font = "13px Arial, sans-serif";
-    ctx.fillText("手续费：正数为收到，负数为支出。净现金流不等于已实现盈亏。", 56, height - 32);
+    ctx.fillText(summary.cash === null ? futuresCashNote : "手续费：正数为收到，负数为支出。净现金流不等于已实现盈亏。", 56, height - 32);
     download(await png(canvas), `trade-ledger-${new Date().toISOString().slice(0, 10)}-${String(page + 1).padStart(2, "0")}.png`);
   }
   return pages;
