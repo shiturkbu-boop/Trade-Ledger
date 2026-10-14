@@ -35,3 +35,7 @@ Requested schedule: every Tuesday through Saturday at 05:00 Asia/Hong_Kong. Sear
 ## Futures cash flow
 
 FUT execution NetCash in Trade Confirmation Flex can contain only commission. It is not full futures cash flow: daily variation-margin gains and losses are reported separately in the Activity Flex Cash Report field Cash Settling MTM. Keep raw NetCash unchanged in storage, but display futures cash flow as NA until settlement data is available. Any filtered summary containing FUT is also NA (not zero or a partial sum). Fees remain separately visible with their original signs. PDF and PNG use the same rule, including for historical imports. Futures proceeds are contract notional amounts, not cash paid or received for principal. Trade-price differences alone cannot reconstruct daily settlement cash without settlement prices and opening positions.
+
+### Execution proceeds
+
+Every asset class displays the original signed CSV `Proceeds` under 成交资金流（未扣手续费）. Summary totals sum these values; signed commissions remain separate and `NetCash` stays stored unchanged. Futures Proceeds represent contract notional amounts, not settlement cash. No realized P&L column or matching engine is added. PDF and PNG use the same values as the page. Existing multi-currency totals do not perform FX conversion.
