@@ -9,7 +9,8 @@ const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET() {
   try {
-    const rows = await getDb().select().from(trades).orderBy(desc(trades.tradeDate), desc(trades.time)).limit(10000);
+    const rows = await getDb().select().from(trades).orderBy(desc(trades.tradeDate), desc(trades.time)).limit(10001);
+    if (rows.length > 10000) return Response.json({ error: "记录超过 10,000 笔，需分页读取完整历史后计算期货盈亏" }, { status: 503, headers });
     return Response.json({ trades: rows }, { headers });
   } catch {
     return Response.json({ error: "成交数据暂不可用" }, { status: 503, headers });

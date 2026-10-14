@@ -39,7 +39,7 @@ export function parseFlexCsv(csv: string): Trade[] {
       key: `${get("ClientAccountID")}:${get("ExecID")}`, tradeDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
       time: get("Date/Time").split(";")[1]?.replace(/^(\d\d)(\d\d)(\d\d)$/, "$1:$2:$3") || "",
       assetClass: asset, symbol: get("Symbol"), description: get("Description"), side: get("Buy/Sell"),
-      quantity: Math.abs(num("Quantity")), price: num("Price"), multiplier: num("Multiplier") || 1,
+      quantity: Math.abs(num("Quantity")), price: num("Price"), multiplier: num("Multiplier") || (asset === "FUT" ? 0 : 1),
       strike: get("Strike") ? num("Strike") : null, expiry: get("Expiry") || null, putCall: get("Put/Call") || null,
       currency: get("CurrencyPrimary") || "USD", proceeds: num("Proceeds"), netCash: num("NetCash"),
       commission: num("Commission"), transactionType: get("TransactionType"), importedAt: now,

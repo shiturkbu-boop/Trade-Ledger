@@ -2,9 +2,11 @@ import type { Trade } from "./flex";
 import { assetName } from "./assets";
 import { futuresCashNote, tradeCashFlow } from "./cash-flow";
 
+import { futuresPnlNote, type FuturesResult } from "./futures-pnl";
+
 type ExportSummary = { buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number | null };
-type ExportOptions = { trades: Trade[]; scope: string; summary: ExportSummary };
-const W = 1440;
+type ExportOptions = { trades: Trade[]; scope: string; summary: ExportSummary; pnl: Map<string, FuturesResult>; pnlTotals: [string, number][] };
+const W = 1700;
 const PAGE_ROWS = 42;
 const fmt = (n: number, currency = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(n);
 const signed = (n: number, currency = "USD") => n > 0 ? `+${fmt(n, currency)}` : fmt(n, currency);
@@ -21,7 +23,7 @@ function png(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("无法生成图片")), "image/png"));
 }
 
-export async function exportReportImages({ trades, scope, summary }: ExportOptions): Promise<number> {
+export async function exportReportImages({ trades, scope, summary, pnl, pnlTotals }: ExportOptions): Promise<number> {
   if (!trades.length) throw new Error("当前筛选结果没有成交记录");
   await document.fonts.ready;
   const pages = Math.ceil(trades.length / PAGE_ROWS);
@@ -47,6 +49,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
         ["手续费支出", signed(summary.feeExpense)],
         ["净手续费", signed(summary.fees)],
         ["净现金流", summary.cash === null ? "NA（缺少期货结算数据）" : fmt(summary.cash)],
+        ["期货已实现净盈亏", pnlTotals.length ? pnlTotals.map(([c, v]) => signed(v, c)).join(" · ") : "暂无已配对平仓"],
       ];
       cards.forEach(([label, value], i) => {
         const x = 56 + (i % 4) * 335, y = 154 + Math.floor(i / 4) * 70;
@@ -61,7 +64,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
     const columns: Array<[string, number, CanvasTextAlign]> = [
       ["日期 / 时间", 70, "left"], ["标的 / 类别", 260, "left"], ["方向", 570, "left"],
       ["数量", 700, "right"], ["成交价", 860, "right"], ["成交额", 1010, "right"],
-      ["手续费", 1160, "right"], ["净现金流", 1360, "right"],
+      ["手续费", 1160, "right"], ["净现金流", 1360, "right"], ["期货已实现净盈亏", 1620, "right"],
     ];
     ctx.font = "600 14px Arial, sans-serif"; ctx.fillStyle = "#bbccda";
     columns.forEach(([label, x, align]) => { ctx.textAlign = align; ctx.fillText(label, x, top - 9); });
@@ -72,6 +75,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
         `${t.tradeDate} ${t.time}`, `${t.symbol}  ${assetName(t.assetClass)}`,
         t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), t.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: t.currency, maximumFractionDigits: 6 }).format(t.price) : fmt(t.price, t.currency),
         fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), tradeCashFlow(t) === null ? "NA（待结算数据）" : fmt(t.netCash, t.currency),
+        t.assetClass !== "FUT" ? "—" : !pnl.has(t.key) ? "NA（缺少有效乘数）" : pnl.get(t.key)!.closed ? signed(pnl.get(t.key)!.net, t.currency) : "未配对平仓",
       ];
       ctx.font = "14px Arial, sans-serif";
       values.forEach((value, j) => {
@@ -81,7 +85,8 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       });
     });
     ctx.textAlign = "left"; ctx.fillStyle = "#8fa2b4"; ctx.font = "13px Arial, sans-serif";
-    ctx.fillText(summary.cash === null ? futuresCashNote : "手续费：正数为收到，负数为支出。净现金流不等于已实现盈亏。", 56, height - 32);
+    ctx.fillText(summary.cash === null ? futuresCashNote : "手续费：正数为收到，负数为支出。净现金流不等于已实现盈亏。", 56, height - 42);
+    if (trades.some(t => t.assetClass === "FUT")) ctx.fillText(futuresPnlNote, 56, height - 20, W - 112);
     download(await png(canvas), `trade-ledger-${new Date().toISOString().slice(0, 10)}-${String(page + 1).padStart(2, "0")}.png`);
   }
   return pages;
