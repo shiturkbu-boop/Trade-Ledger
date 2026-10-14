@@ -3,7 +3,7 @@ import type { Trade } from "./flex";
 export const futuresPnlNote = "期货按账户、合约及到期月 FIFO 配对，价差 × CSV 合约乘数 × 已平张数，加分摊的开平仓手续费；归入平仓日。仅基于已导入成交，历史开仓缺失时需补导；未平仓不计浮盈亏。";
 
 type Lot = { trade: Trade; remaining: number };
-export type FuturesResult = { gross: number; net: number; closed: number };
+export type FuturesResult = { gross: number; net: number; closed: number; remaining: number };
 
 // Calculate from ALL imported history before applying date/search filters.
 // Keep raw NetCash untouched: realized trading P&L is a separate measure.
@@ -16,7 +16,7 @@ export function futuresPnl(trades: Trade[]): Map<string, FuturesResult> {
     const account = t.key.slice(0, t.key.indexOf(":"));
     const contract = JSON.stringify([account, t.symbol, t.expiry, t.currency, t.multiplier]);
     const lots = books.get(contract) || [];
-    const result = { gross: 0, net: 0, closed: 0 };
+    const result = { gross: 0, net: 0, closed: 0, remaining: t.quantity };
     let remaining = t.quantity;
     if (!(t.multiplier > 0) || !Number.isFinite(t.multiplier) || !(remaining > 0)) continue;
     while (remaining > 1e-9 && lots.length && lots[0].trade.side !== t.side) {
@@ -28,10 +28,12 @@ export function futuresPnl(trades: Trade[]): Map<string, FuturesResult> {
       result.closed += quantity;
       remaining -= quantity;
       lot.remaining -= quantity;
+      results.get(lot.trade.key)!.remaining = Math.max(0, lot.remaining);
       if (lot.remaining < 1e-9) lots.shift();
     }
     if (remaining > 1e-9) lots.push({ trade: t, remaining });
     books.set(contract, lots);
+    result.remaining = Math.max(0, remaining);
     results.set(t.key, result);
   }
   return results;

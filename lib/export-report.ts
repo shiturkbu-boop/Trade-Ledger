@@ -75,7 +75,7 @@ export async function exportReportImages({ trades, scope, summary, pnl, pnlTotal
         `${t.tradeDate} ${t.time}`, `${t.symbol}  ${assetName(t.assetClass)}`,
         t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), t.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: t.currency, maximumFractionDigits: 6 }).format(t.price) : fmt(t.price, t.currency),
         fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), tradeCashFlow(t) === null ? "NA（待结算数据）" : fmt(t.netCash, t.currency),
-        t.assetClass !== "FUT" ? "—" : !pnl.has(t.key) ? "NA（缺少有效乘数）" : pnl.get(t.key)!.closed ? signed(pnl.get(t.key)!.net, t.currency) : "未配对平仓",
+        t.assetClass !== "FUT" ? "—" : !pnl.has(t.key) ? "NA（缺少有效乘数）" : (pnl.get(t.key)!.closed || pnl.get(t.key)!.remaining < 1e-9) ? signed(pnl.get(t.key)!.net, t.currency) : "未配对平仓",
       ];
       ctx.font = "14px Arial, sans-serif";
       values.forEach((value, j) => {

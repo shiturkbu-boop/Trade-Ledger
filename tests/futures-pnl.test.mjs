@@ -14,8 +14,8 @@ test('synthetic MES long and short round trips include both signed fees', () => 
 test('FIFO partial fills, overnight close and reversal allocate each fee exactly once', () => {
   const rows = [t('01','BUY',100,2,{commission:-2}),t('02','BUY',110,1,{commission:1}),t('03','SELL',120,4,{commission:-4,tradeDate:'2025-01-02'}),t('04','BUY',115,1,{commission:-1,tradeDate:'2025-01-03'})];
   const p=futuresPnl(rows);
-  assert.deepEqual(p.get('test:03'),{gross:250,net:246,closed:3});
-  assert.deepEqual(p.get('test:04'),{gross:25,net:23,closed:1});
+  assert.deepEqual(p.get('test:03'),{gross:250,net:246,closed:3,remaining:0});
+  assert.deepEqual(p.get('test:04'),{gross:25,net:23,closed:1,remaining:0});
 });
 test('accounts, expiry months, currencies and symbols never pair together', () => {
   for (const change of [{key:'other:02'},{expiry:'20270319'},{currency:'HKD'},{symbol:'MESH7'}]) {
@@ -25,4 +25,17 @@ test('accounts, expiry months, currencies and symbols never pair together', () =
 test('arbitrary multiplier, rebates and no valid multiplier', () => {
   assert.equal(futuresPnl([t('01','SELL',100,2,{multiplier:1000,commission:2}),t('02','BUY',99,2,{multiplier:1000,commission:-2})]).get('test:02').net,2000);
   assert.equal(futuresPnl([t('01','BUY',100,1,{multiplier:0})]).has('test:01'),false);
+});
+
+// The opening row is zero only once its entire lot has been closed.
+test('opening rows track remaining quantity through partial and final closes', () => {
+  const opening=t('01','BUY',100,2);
+  const partial=t('02','SELL',110);
+  const final=t('03','SELL',120,1,{tradeDate:'2025-01-02'});
+  assert.equal(futuresPnl([opening]).get('test:01').remaining,2);
+  assert.equal(futuresPnl([opening,partial]).get('test:01').remaining,1);
+  const p=futuresPnl([final,opening,partial]);
+  assert.deepEqual(p.get('test:01'),{gross:0,net:0,closed:0,remaining:0});
+  assert.equal(p.get('test:02').net,48.78);
+  assert.equal(p.get('test:03').net,98.78);
 });
