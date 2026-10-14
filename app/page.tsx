@@ -20,7 +20,7 @@ export default function Home() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [view, setView] = useState<View>("ALL");
   const [date, setDate] = useState("ALL");
-  const [currency, setCurrency] = useState("ALL");
+  const [currency, setCurrency] = useState("USD");
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
