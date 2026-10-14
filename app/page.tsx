@@ -9,8 +9,6 @@ import type { Trade } from "@/lib/flex";
 import { assetClasses, assetName, type AssetClass } from "@/lib/assets";
 import { futuresCashNote, totalCashFlow, tradeCashFlow } from "@/lib/cash-flow";
 
-import { futuresPnl, futuresPnlNote } from "@/lib/futures-pnl";
-
 type View = "ALL" | AssetClass;
 const money = (value: number, currency = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
 const number = (value: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 }).format(value);
@@ -35,16 +33,6 @@ export default function Home() {
     } catch (e) { setError(e instanceof Error ? e.message : "读取失败"); }
   }
   useEffect(() => { void refresh(); }, []);
-  const pnl = useMemo(() => futuresPnl(trades), [trades]);
-  const pnlTotals = useMemo(() => {
-    const totals = new Map<string, number>();
-    for (const t of trades) {
-      if (t.assetClass !== "FUT" || (view !== "ALL" && view !== "FUT") || (date !== "ALL" && t.tradeDate !== date) || !(t.symbol + " " + t.description).toLowerCase().includes(query.trim().toLowerCase())) continue;
-      const result = pnl.get(t.key);
-      if (result?.closed) totals.set(t.currency, (totals.get(t.currency) || 0) + result.net);
-    }
-    return [...totals];
-  }, [trades, pnl, view, date, query]);
   const dates = useMemo(() => [...new Set(trades.map(x => x.tradeDate))].sort().reverse(), [trades]);
   const filtered = useMemo(() => trades.filter(x =>
     (view === "ALL" || x.assetClass === view) && (date === "ALL" || x.tradeDate === date) &&
@@ -78,7 +66,7 @@ export default function Home() {
     setExporting(true); setError(""); setNotice("");
     try {
       const scope = `${date === "ALL" ? "所有日期" : date} · ${view === "ALL" ? "全部类别" : assetName(view)}${query.trim() ? ` · ${query.trim()}` : ""}`;
-      const pages = await exportReportImages({ trades: filtered, scope, summary, pnl, pnlTotals });
+      const pages = await exportReportImages({ trades: filtered, scope, summary });
       setNotice(`已导出 ${pages} 张 PNG 图片`);
     } catch (e) { setError(e instanceof Error ? e.message : "图片导出失败"); }
     finally { setExporting(false); }
@@ -95,15 +83,14 @@ export default function Home() {
         <label className="upload"><input type="file" accept=".csv,text/csv" onChange={e => { void importFile(e.target.files?.[0]); e.target.value = ""; }} disabled={busy} /><Button asChild><span>{busy ? "导入中…" : "导入 Flex CSV"}</span></Button></label></div></section>
     <div className="messages" aria-live="polite">{error && <p className="error">{error}</p>}{notice && <p className="success">{notice}</p>}</div>
     <section className="metrics" aria-label="汇总"><div><span>成交笔数</span><strong>{number(summary.count)}</strong></div><div><span>买入成交额</span><strong>{money(summary.buy)}</strong></div><div><span>卖出成交额</span><strong>{money(summary.sell)}</strong></div><div><span>净手续费</span><strong className={summary.fees < 0 ? "negative" : summary.fees > 0 ? "positive" : ""}>{signedMoney(summary.fees)}</strong><small>收到 {signedMoney(summary.feeIncome)} · 支出 {signedMoney(summary.feeExpense)}</small></div><div><span>净现金流</span><strong className={summary.cash === null ? "muted" : summary.cash < 0 ? "negative" : "positive"}>{summary.cash === null ? "NA" : money(summary.cash)}</strong>{summary.cash === null && <small>缺少期货逐日结算数据</small>}</div></section>
-    {filtered.some(t => t.assetClass === "FUT") && <section className="cash-note" aria-label="期货盈亏"><strong>期货已实现净盈亏：{pnlTotals.length ? pnlTotals.map(([currency, value]) => signedMoney(value, currency)).join(" · ") : "暂无已配对平仓"}</strong><p>{futuresPnlNote}</p></section>}
     {summary.cash === null && <p className="cash-note" role="note">{futuresCashNote} 期货成交额为合约名义金额。</p>}
     <section className="ledger"><div className="toolbar"><div className="tabs" role="group" aria-label="资产类别">{([["ALL", "全部"], ...assetClasses] as const).map(([value, label]) =>
       <button key={value} className={view === value ? "active" : ""} onClick={() => setView(value)}>{label}<span>{value === "ALL" ? trades.length : trades.filter(x => x.assetClass === value).length}</span></button>)}</div>
       <div className="filters"><label>交易日<select value={date} onChange={e => setDate(e.target.value)}><option value="ALL">所有日期</option>{dates.map(d => <option key={d} value={d}>{d}</option>)}</select></label><div className="search-control"><Input ref={searchRef} aria-label="搜索标的" placeholder="搜索代码或名称" value={query} onChange={e => setQuery(e.target.value)} />{query && <Button type="button" variant="ghost" size="icon-sm" className="clear-search" aria-label="清除搜索" title="清除搜索" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>×</Button>}</div></div></div>
       {groups.length ? groups.map(([day, rows]) => <div className="day" key={day}><div className="day-heading"><h2>{day}</h2><span>{rows.length} 笔成交 · 净手续费 {signedMoney(rows.reduce((sum, x) => sum + x.commission, 0))}</span></div>
-        <div className="table-wrap"><Table><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类别 / 标的</TableHead><TableHead>方向</TableHead><TableHead className="right">数量</TableHead><TableHead className="right">成交价</TableHead><TableHead className="right">成交额</TableHead><TableHead className="right">手续费</TableHead><TableHead className="right">净现金流</TableHead><TableHead className="right">期货已实现净盈亏</TableHead></TableRow></TableHeader>
-        <TableBody>{rows.map(x => <TableRow key={x.key}><TableCell className="mono muted">{x.time || "—"}</TableCell><TableCell><div className="symbol"><b>{x.symbol}</b><span>{assetName(x.assetClass)}</span></div><small className="description">{x.assetClass === "OPT" ? `${x.expiry || ""} ${x.strike || ""} ${x.putCall || ""} · ${x.multiplier}×` : x.assetClass === "FUT" ? `${x.description}${x.expiry ? ` · 到期 ${x.expiry}` : ""} · ${x.multiplier}×` : x.description}</small></TableCell><TableCell><span className={x.side === "BUY" ? "side buy" : "side sell"}>{x.side === "BUY" ? "买入" : "卖出"}</span></TableCell><TableCell className="right mono">{number(x.quantity)}</TableCell><TableCell className="right mono">{x.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: x.currency, maximumFractionDigits: 6 }).format(x.price) : money(x.price, x.currency)}</TableCell><TableCell className="right mono">{money(Math.abs(x.proceeds), x.currency)}</TableCell><TableCell className={`right mono ${x.commission < 0 ? "negative" : x.commission > 0 ? "positive" : "muted"}`}>{signedMoney(x.commission, x.currency)}</TableCell><TableCell className={`right mono ${tradeCashFlow(x) === null ? "muted" : x.netCash < 0 ? "negative" : "positive"}`} title={x.assetClass === "FUT" ? futuresCashNote : undefined}>{tradeCashFlow(x) === null ? "NA" : money(x.netCash, x.currency)}</TableCell><TableCell className={`right mono ${(pnl.get(x.key)?.net || 0) < 0 ? "negative" : "positive"}`} title={x.assetClass === "FUT" ? futuresPnlNote : undefined}>{x.assetClass !== "FUT" ? "—" : !pnl.has(x.key) ? "NA（缺少有效乘数）" : (pnl.get(x.key)!.closed || pnl.get(x.key)!.remaining < 1e-9) ? signedMoney(pnl.get(x.key)!.net, x.currency) : "未配对平仓"}</TableCell></TableRow>)}</TableBody></Table></div></div>) :
+        <div className="table-wrap"><Table><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类别 / 标的</TableHead><TableHead>方向</TableHead><TableHead className="right">数量</TableHead><TableHead className="right">成交价</TableHead><TableHead className="right">成交额</TableHead><TableHead className="right">手续费</TableHead><TableHead className="right">净现金流</TableHead></TableRow></TableHeader>
+        <TableBody>{rows.map(x => <TableRow key={x.key}><TableCell className="mono muted">{x.time || "—"}</TableCell><TableCell><div className="symbol"><b>{x.symbol}</b><span>{assetName(x.assetClass)}</span></div><small className="description">{x.assetClass === "OPT" ? `${x.expiry || ""} ${x.strike || ""} ${x.putCall || ""} · ${x.multiplier}×` : x.assetClass === "FUT" ? `${x.description}${x.expiry ? ` · 到期 ${x.expiry}` : ""} · ${x.multiplier}×` : x.description}</small></TableCell><TableCell><span className={x.side === "BUY" ? "side buy" : "side sell"}>{x.side === "BUY" ? "买入" : "卖出"}</span></TableCell><TableCell className="right mono">{number(x.quantity)}</TableCell><TableCell className="right mono">{x.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: x.currency, maximumFractionDigits: 6 }).format(x.price) : money(x.price, x.currency)}</TableCell><TableCell className="right mono">{money(Math.abs(x.proceeds), x.currency)}</TableCell><TableCell className={`right mono ${x.commission < 0 ? "negative" : x.commission > 0 ? "positive" : "muted"}`}>{signedMoney(x.commission, x.currency)}</TableCell><TableCell className={`right mono ${tradeCashFlow(x) === null ? "muted" : x.netCash < 0 ? "negative" : "positive"}`} title={x.assetClass === "FUT" ? futuresCashNote : undefined}>{tradeCashFlow(x) === null ? "NA" : money(x.netCash, x.currency)}</TableCell></TableRow>)}</TableBody></Table></div></div>) :
         <div className="empty"><strong>{trades.length ? "没有符合条件的成交" : "尚无成交记录"}</strong><p>{trades.length ? "试试其他日期、资产类别或代码。" : "导入 IBKR Trade Confirmation Flex CSV，成交记录会保存在此站点。"}</p></div>}</section>
-    <footer>数据来源：IBKR Trade Confirmation Flex · 按 ExecID 去重 · 期货按 FIFO 计算已实现净盈亏 · 不含未实现盈亏</footer>
+    <footer>数据来源：IBKR Trade Confirmation Flex · 按 ExecID 去重 · 不包含持仓或盈亏计算</footer>
   </main>;
 }
