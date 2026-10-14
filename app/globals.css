@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
 :root { --background:#0b1220;--foreground:#ecf2f8;--card:#121d2c;--card-foreground:#ecf2f8;--popover:#121d2c;--popover-foreground:#ecf2f8;--primary:#b7ef6a;--primary-foreground:#0b1220;--secondary:#202e40;--secondary-foreground:#ecf2f8;--muted:#202e40;--muted-foreground:#9badbd;--accent:#213447;--accent-foreground:#ecf2f8;--destructive:#ff7386;--border:#2b3b4c;--input:#2b3b4c;--ring:#b7ef6a;--radius:.65rem; }
-@theme inline { --color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-destructive:var(--destructive);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--radius-sm:.4rem;--radius-md:.55rem;--radius-lg:.65rem;--font-sans:Arial,"Noto Sans CJK SC",sans-serif;--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+@theme inline { --color-background:var(--background);--color-foreground:var(--foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-destructive:var(--destructive);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--radius-sm:.4rem;--radius-md:.55rem;--radius-lg:.65rem;--font-sans:Arial,"Noto Sans CJK SC",sans-serif;--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
 * { box-sizing:border-box; }
 html { background:#0b1220; }
 body { margin:0;color:#ecf2f8;font-family:Arial,"Noto Sans CJK SC",sans-serif;font-size:16px; }
@@ -65,3 +65,6 @@ footer { color:#6f8397;font-size:12px;padding:22px 0 40px; }
 .summary-controls { display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:14px;color:#9badbd;font-size:14px; }
 .summary-controls [data-slot="input-group"] { width:240px;background:#0c1827; }
 @media print { .summary-controls { display:none!important; } }
+
+[data-slot="combobox-content"] { background-color:#121d2c;color:#ecf2f8;border:1px solid #40536a;box-shadow:0 12px 32px rgb(0 0 0 / 55%); }
+[data-slot="combobox-item"][data-highlighted] { background-color:#29415b;color:#fff; }
