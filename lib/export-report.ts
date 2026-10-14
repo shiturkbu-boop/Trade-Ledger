@@ -1,8 +1,9 @@
+import { summaryMoney } from "./currency";
 import type { Trade } from "./flex";
 import { assetName } from "./assets";
 import { futuresCashNote, proceedsNote, tradeCashFlow } from "./cash-flow";
 
-type ExportSummary = { buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number };
+type ExportSummary = { currency: string | null; buy: number; sell: number; feeIncome: number; feeExpense: number; fees: number; cash: number };
 type ExportOptions = { trades: Trade[]; scope: string; summary: ExportSummary };
 const W = 1440;
 const PAGE_ROWS = 42;
@@ -41,12 +42,12 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
     if (page === 0) {
       const cards = [
         ["成交笔数", String(trades.length)],
-        ["买入成交额", fmt(summary.buy)],
-        ["卖出成交额", fmt(summary.sell)],
-        ["手续费收入", signed(summary.feeIncome)],
-        ["手续费支出", signed(summary.feeExpense)],
-        ["净手续费", signed(summary.fees)],
-        ["成交资金流（未扣手续费）", signed(summary.cash)],
+        ["买入成交额", summaryMoney(summary.buy, summary.currency)],
+        ["卖出成交额", summaryMoney(summary.sell, summary.currency)],
+        ["手续费收入", summaryMoney(summary.feeIncome, summary.currency, true)],
+        ["手续费支出", summaryMoney(summary.feeExpense, summary.currency, true)],
+        ["净手续费", summaryMoney(summary.fees, summary.currency, true)],
+        ["成交资金流（未扣手续费）", summaryMoney(summary.cash, summary.currency, true)],
       ];
       cards.forEach(([label, value], i) => {
         const x = 56 + (i % 4) * 335, y = 154 + Math.floor(i / 4) * 70;
