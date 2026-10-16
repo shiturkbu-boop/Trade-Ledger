@@ -24,19 +24,25 @@ export function parseCsv(source: string): string[][] {
 
 export function parseFlexCsv(csv: string): Trade[] {
   const rows = parseCsv(csv); if (!rows.length) throw new Error("CSV 文件为空");
-  const header = rows.shift()!; const required = ["AssetClass", "Symbol", "TradeDate", "Buy/Sell", "Quantity", "Price", "Proceeds", "NetCash", "Commission", "ExecID"];
+  const header = rows.shift()!; const required = ["AssetClass", "Symbol", "TradeDate", "Buy/Sell", "Quantity", "Price", "Proceeds", "NetCash", "Commission"];
   if (required.some((key) => !header.includes(key))) throw new Error("不是受支持的 IBKR Trade Confirmation Flex CSV");
   const now = Date.now();
   return rows.map((cells, index) => {
     const get = (name: string) => cells[header.indexOf(name)] ?? "";
     const num = (name: string) => Number(get(name).replace(/,/g, ""));
     const date = get("TradeDate"); const asset = get("AssetClass");
-    if (!/^\d{8}$/.test(date) || !get("Symbol") || !get("ExecID") || !["BUY", "SELL"].includes(get("Buy/Sell")) ||
+    // BookTrade assignment/exercise records may have no exchange execution ID.
+    // Keep existing execution keys unchanged; namespace the IBKR TradeID fallback.
+    const execId = get("ExecID").trim();
+    const tradeId = get("TradeID").trim();
+    if (!execId && !tradeId) throw new Error(`第 ${index + 2} 行缺少 ExecID 和 TradeID，无法可靠去重`);
+    const key = execId ? `${get("ClientAccountID")}:${execId}` : `${get("ClientAccountID")}:trade:${tradeId}`;
+    if (!/^\d{8}$/.test(date) || !get("Symbol") || !["BUY", "SELL"].includes(get("Buy/Sell")) ||
       ["Quantity", "Price", "Proceeds", "NetCash", "Commission"].some((name) => !Number.isFinite(num(name)))) {
       throw new Error(`第 ${index + 2} 行存在无效成交数据`);
     }
     return {
-      key: `${get("ClientAccountID")}:${get("ExecID")}`, tradeDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
+      key, tradeDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
       time: get("Date/Time").split(";")[1]?.replace(/^(\d\d)(\d\d)(\d\d)$/, "$1:$2:$3") || "",
       assetClass: asset, symbol: get("Symbol"), description: get("Description"), side: get("Buy/Sell"),
       quantity: Math.abs(num("Quantity")), price: num("Price"), multiplier: num("Multiplier") || 1,

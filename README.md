@@ -1,6 +1,6 @@
 # IBKR Flex Trade Ledger
 
-Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individual executions in Sites D1, deduplicated by ClientAccountID and ExecID, and groups fills by trade date. Asset filters cover STK (stocks), OPT (options), FUT (futures), and CASH (spot Forex). Unfamiliar asset classes remain stored and visible under All. Futures display expiry when available and contract multiplier; category names are shared by the dashboard and PNG export.
+Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individual executions in Sites D1, deduplicated by ClientAccountID and ExecID (or namespaced TradeID when ExecID is blank), and groups fills by trade date. Asset filters cover STK (stocks), OPT (options), FUT (futures), and CASH (spot Forex). Unfamiliar asset classes remain stored and visible under All. Futures display expiry when available and contract multiplier; category names are shared by the dashboard and PNG export.
 
 ## Import
 
@@ -22,7 +22,7 @@ The MCP import and status tools require the platform verified email to equal the
 
 1. Search Gmail with `label:tradeconfirmationflexprocessneeded has:attachment`. Read each labeled Flex confirmation, using the report date from the subject or filename as the trade date. Keep the exact Gmail message ID and the set of CSV execution IDs until processing finishes.
 2. For each message, use Gmail's attachment reader when supported. If its CSV is reported as `application/octet-stream` with `read_attachment_supported: false`, read the message in `raw` format and decode the MIME attachment's base64 bytes. Only select a `flex.*.csv` attachment from a matching confirmation; do not treat the message body as CSV.
-3. Call the connected Site's `import_flex_csv` tool once per CSV. It validates the IBKR header and deduplicates by account and ExecID. A rerun is safe. Keep CSV/account contents out of public repository commits, logs, and task instructions.
+3. Call the connected Site's `import_flex_csv` tool once per CSV. It validates the IBKR header and deduplicates by account and ExecID, falling back to namespaced TradeID when ExecID is blank. Import and verification use the same parser, including zero-price option assignment records. A rerun is safe. Keep CSV/account contents out of public repository commits, logs, and task instructions.
 4. Call the connected Site's `verify_flex_csv` for every CSV attachment in that message. Require `verified: true` and `missingExecutions: 0`; this tool reads back every execution key from the database. A rerun that adds zero rows still succeeds when all execution IDs are already present. A count or latest-date check alone is insufficient for clearing the label.
 5. Only after that readback succeeds, remove the `TradeConfirmationFlexProcessNeeded` label from that exact Gmail message ID using Gmail's label action. Preserve the message and other labels. Verify the pending label is gone. On a Gmail, parsing, Site write, or readback failure, leave the pending label in place and report the failure so the next run can retry.
 

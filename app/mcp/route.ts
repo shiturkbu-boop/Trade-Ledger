@@ -7,7 +7,7 @@ import { env } from "cloudflare:workers";
 export const dynamic = "force-dynamic";
 const tool = {
   name: "import_flex_csv",
-  description: "Import an IBKR Trade Confirmation Flex CSV into the private ledger. Deduplicates executions by account and ExecID. Only use for the owner's authorized Gmail Flex reports.",
+  description: "Import an IBKR Trade Confirmation Flex CSV into the private ledger. Deduplicates by account and ExecID, falling back to TradeID for assignment/exercise BookTrade records without ExecID. Only use for the owner's authorized Gmail Flex reports.",
   inputSchema: { type: "object", properties: { csv: { type: "string", description: "Complete UTF-8 contents of a Trade Confirmation Flex CSV attachment." } }, required: ["csv"], additionalProperties: false },
 };
 const headers = { "Cache-Control": "private, no-store", "Content-Type": "application/json" };
