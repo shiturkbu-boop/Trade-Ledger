@@ -47,8 +47,12 @@ export async function POST(request: Request) {
       if (parsed.length > 5000) return fail(id, -32602, "At most 5,000 executions per verification");
       const keys = [...new Set(parsed.map(row => row.key))];
       const stored = new Set<string>();
-      for (let i = 0; i < keys.length; i += 200) {
-        const found = await getDb().select({ key: trades.key }).from(trades).where(inArray(trades.key, keys.slice(i, i + 200)));
+      // Cloudflare D1 permits at most 100 bound parameters per SQL statement.
+      // Keep each IN query below that limit so large Flex reports verify correctly.
+      const lookupBatchSize = 80;
+      const db = getDb();
+      for (let i = 0; i < keys.length; i += lookupBatchSize) {
+        const found = await db.select({ key: trades.key }).from(trades).where(inArray(trades.key, keys.slice(i, i + lookupBatchSize)));
         found.forEach(row => stored.add(row.key));
       }
       const missing = keys.filter(key => !stored.has(key)).length;
