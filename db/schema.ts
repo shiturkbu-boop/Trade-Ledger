@@ -3,6 +3,7 @@ import { sqliteTable, text, real, integer, index } from "drizzle-orm/sqlite-core
 export const trades = sqliteTable("trades", {
   key: text("key").primaryKey(),
   tradeDate: text("trade_date").notNull(),
+  executionDate: text("execution_date"),
   time: text("time").notNull(),
   assetClass: text("asset_class").notNull(),
   symbol: text("symbol").notNull(),

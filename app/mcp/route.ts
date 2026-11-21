@@ -1,6 +1,7 @@
 import { getDb } from "@/db";
 import { trades } from "@/db/schema";
 import { desc, inArray } from "drizzle-orm";
+import { importTrades } from "@/db/import-trades";
 import { parseFlexCsv } from "@/lib/flex";
 import { env } from "cloudflare:workers";
 
@@ -45,18 +46,27 @@ export async function POST(request: Request) {
     try {
       const parsed = parseFlexCsv(csv);
       if (parsed.length > 5000) return fail(id, -32602, "At most 5,000 executions per verification");
-      const keys = [...new Set(parsed.map(row => row.key))];
-      const stored = new Set<string>();
+      const executions = new Map(parsed.map(row => [row.key, row]));
+      const keys = [...executions.keys()];
+      let stored = 0;
+      let mismatchedTimes = 0;
       // Cloudflare D1 permits at most 100 bound parameters per SQL statement.
-      // Keep each IN query below that limit so large Flex reports verify correctly.
       const lookupBatchSize = 80;
       const db = getDb();
       for (let i = 0; i < keys.length; i += lookupBatchSize) {
-        const found = await db.select({ key: trades.key }).from(trades).where(inArray(trades.key, keys.slice(i, i + lookupBatchSize)));
-        found.forEach(row => stored.add(row.key));
+        const found = await db.select({
+          key: trades.key, executionDate: trades.executionDate, time: trades.time,
+        }).from(trades).where(inArray(trades.key, keys.slice(i, i + lookupBatchSize)));
+        stored += found.length;
+        for (const row of found) {
+          const expected = executions.get(row.key);
+          if (expected?.executionDate && (row.executionDate !== expected.executionDate || row.time !== expected.time)) {
+            mismatchedTimes++;
+          }
+        }
       }
-      const missing = keys.filter(key => !stored.has(key)).length;
-      return json(id, { content: [{ type: "text", text: JSON.stringify({ totalExecutions: keys.length, storedExecutions: stored.size, missingExecutions: missing, verified: missing === 0 }) }] });
+      const missing = keys.length - stored;
+      return json(id, { content: [{ type: "text", text: JSON.stringify({ totalExecutions: keys.length, storedExecutions: stored, missingExecutions: missing, mismatchedTimes, verified: missing === 0 && mismatchedTimes === 0 }) }] });
     } catch (error) {
       return json(id, { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : "Verification failed" }] });
     }
@@ -67,12 +77,8 @@ export async function POST(request: Request) {
   try {
     const parsed = parseFlexCsv(csv);
     if (parsed.length > 5000) return fail(id, -32602, "At most 5,000 executions per import");
-    const db = getDb(); let added = 0;
-    for (const row of parsed) {
-      const inserted = await db.insert(trades).values(row).onConflictDoNothing().returning({ key: trades.key });
-      added += inserted.length;
-    }
-    return json(id, { content: [{ type: "text", text: JSON.stringify({ total: parsed.length, added, duplicates: parsed.length - added }) }] });
+    const result = await importTrades(parsed);
+    return json(id, { content: [{ type: "text", text: JSON.stringify(result) }] });
   } catch (error) {
     return json(id, { isError: true, content: [{ type: "text", text: error instanceof Error ? error.message : "Import failed" }] });
   }

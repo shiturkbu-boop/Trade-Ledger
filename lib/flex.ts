@@ -1,5 +1,5 @@
 export type Trade = {
-  key: string; tradeDate: string; time: string; assetClass: string; symbol: string;
+  key: string; tradeDate: string; executionDate: string | null; time: string; assetClass: string; symbol: string;
   description: string; side: string; quantity: number; price: number; multiplier: number;
   strike: number | null; expiry: string | null; putCall: string | null; currency: string;
   proceeds: number; netCash: number; commission: number; transactionType: string; importedAt: number;
@@ -22,6 +22,23 @@ export function parseCsv(source: string): string[][] {
   return rows;
 }
 
+function isoDate(date: string) {
+  return date.replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3");
+}
+
+function parseExecutionTime(value: string) {
+  const match = /^(\d{8}|\d{4}-\d{2}-\d{2})[;,T\s]+([01]\d|2[0-3]):?([0-5]\d):?([0-5]\d)$/.exec(value.trim());
+  if (!match) return { executionDate: null, time: "" };
+
+  const [, date, hours, minutes, seconds] = match;
+  const executionDate = isoDate(date);
+  const midnight = new Date(`${executionDate}T00:00:00Z`);
+  if (!Number.isFinite(midnight.getTime()) || midnight.toISOString().slice(0, 10) !== executionDate) {
+    return { executionDate: null, time: "" };
+  }
+  return { executionDate, time: `${hours}:${minutes}:${seconds}` };
+}
+
 export function parseFlexCsv(csv: string): Trade[] {
   const rows = parseCsv(csv); if (!rows.length) throw new Error("CSV 文件为空");
   const header = rows.shift()!; const required = ["AssetClass", "Symbol", "TradeDate", "Buy/Sell", "Quantity", "Price", "Proceeds", "NetCash", "Commission"];
@@ -42,8 +59,8 @@ export function parseFlexCsv(csv: string): Trade[] {
       throw new Error(`第 ${index + 2} 行存在无效成交数据`);
     }
     return {
-      key, tradeDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
-      time: get("Date/Time").split(";")[1]?.replace(/^(\d\d)(\d\d)(\d\d)$/, "$1:$2:$3") || "",
+      key, tradeDate: isoDate(date),
+      ...parseExecutionTime(get("Date/Time")),
       assetClass: asset, symbol: get("Symbol"), description: get("Description"), side: get("Buy/Sell"),
       quantity: Math.abs(num("Quantity")), price: num("Price"), multiplier: num("Multiplier") || 1,
       strike: get("Strike") ? num("Strike") : null, expiry: get("Expiry") || null, putCall: get("Put/Call") || null,

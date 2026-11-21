@@ -1,0 +1,1 @@
+ALTER TABLE `trades` ADD `execution_date` text;

@@ -1,6 +1,7 @@
 import { getDb } from "@/db";
-import { desc } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { trades } from "@/db/schema";
+import { importTrades } from "@/db/import-trades";
 import { parseFlexCsv } from "@/lib/flex";
 import { env } from "cloudflare:workers";
 
@@ -9,7 +10,7 @@ const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET() {
   try {
-    const rows = await getDb().select().from(trades).orderBy(desc(trades.tradeDate), desc(trades.time)).limit(10000);
+    const rows = await getDb().select().from(trades).orderBy(desc(trades.tradeDate), desc(sql`coalesce(${trades.executionDate}, ${trades.tradeDate})`), desc(trades.time)).limit(10000);
     return Response.json({ trades: rows }, { headers });
   } catch {
     return Response.json({ error: "成交数据暂不可用" }, { status: 503, headers });
@@ -27,12 +28,7 @@ export async function POST(request: Request) {
     if (Number(request.headers.get("content-length") || 0) > 2_000_000) throw new Error("文件超过 2 MB");
     const csv = await request.text(); if (csv.length > 2_000_000) throw new Error("文件超过 2 MB");
     const parsed = parseFlexCsv(csv); if (parsed.length > 5000) throw new Error("单次最多 5,000 笔成交");
-    const db = getDb(); let added = 0;
-    for (const trade of parsed) {
-      const result = await db.insert(trades).values(trade).onConflictDoNothing().returning({ key: trades.key });
-      added += result.length;
-    }
-    return Response.json({ total: parsed.length, added, duplicates: parsed.length - added }, { headers });
+    return Response.json(await importTrades(parsed), { headers });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "导入失败" }, { status: 400, headers });
   }

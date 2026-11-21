@@ -1,3 +1,4 @@
+import { displayExecutionTime } from "./execution-time";
 import { summaryMoney } from "./currency";
 import type { Trade } from "./flex";
 import { assetName } from "./assets";
@@ -60,7 +61,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
     const top = 340;
     ctx.fillStyle = "#26394d"; ctx.fillRect(56, top - 30, W - 112, 34);
     const columns: Array<[string, number, CanvasTextAlign]> = [
-      ["日期 / 时间", 70, "left"], ["标的 / 类别", 260, "left"], ["方向", 570, "left"],
+      ["成交时间 · 北京", 70, "left"], ["标的 / 类别", 315, "left"], ["方向", 570, "left"],
       ["数量", 700, "right"], ["成交价", 860, "right"], ["成交额", 1010, "right"],
       ["手续费", 1160, "right"], ["成交资金流", 1360, "right"],
     ];
@@ -70,7 +71,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       const y = top + i * 44;
       ctx.fillStyle = i % 2 ? "#111e2d" : "#152335"; ctx.fillRect(56, y + 5, W - 112, 43);
       const values = [
-        `${t.tradeDate} ${t.time}`, `${t.symbol}  ${assetName(t.assetClass)}`,
+        displayExecutionTime(t), `${t.symbol}  ${assetName(t.assetClass)}`,
         t.side === "BUY" ? "买入" : "卖出", qty(t.quantity), t.assetClass === "CASH" ? new Intl.NumberFormat("en-US", { style: "currency", currency: t.currency, maximumFractionDigits: 6 }).format(t.price) : fmt(t.price, t.currency),
         fmt(Math.abs(t.proceeds), t.currency), signed(t.commission, t.currency), signed(tradeCashFlow(t), t.currency),
       ];
@@ -78,7 +79,11 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
       values.forEach((value, j) => {
         const [, x, align] = columns[j]; ctx.textAlign = align;
         ctx.fillStyle = j === 6 ? (t.commission < 0 ? "#ff9eaa" : t.commission > 0 ? "#b7ef6a" : "#d7e1e9") : "#ecf2f8";
-        ctx.fillText(value, x, y + 32, j === 1 ? 290 : j === 0 ? 180 : 160);
+        ctx.fillText(value, x, y + (j === 0 ? 22 : 32), j < 2 ? 235 : 160);
+        if (j === 0) {
+          ctx.fillStyle = "#9badbd";
+          ctx.fillText(`交易日 ${t.tradeDate}`, x, y + 40, 235);
+        }
       });
     });
     ctx.textAlign = "left"; ctx.fillStyle = "#8fa2b4"; ctx.font = "13px Arial, sans-serif";
