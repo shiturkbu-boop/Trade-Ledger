@@ -4,7 +4,7 @@ Private Sites dashboard for IBKR Trade Confirmation Flex CSV. It stores individu
 
 ## Execution time
 
-The ledger groups rows by IBKR `TradeDate`. It uses the complete Flex `Date/Time` to show each execution in Beijing time, including the calendar date. Historical rows whose execution date has not been recovered show the original Eastern clock time with a label until their CSV is reimported.
+The ledger groups rows by IBKR `TradeDate`, newest group first. Within each group, it sorts executions newest first using the full Eastern calendar date and time from Flex `Date/Time`. The page and exports display Eastern time. Historical rows with only a clock time use the trade date for sorting and show that the execution date is unverified until their CSV is reimported. Rows without a clock time appear last within their group. Equal timestamps use the execution key for stable ordering.
 
 ## Import
 

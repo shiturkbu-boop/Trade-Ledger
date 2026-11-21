@@ -61,7 +61,7 @@ export async function exportReportImages({ trades, scope, summary }: ExportOptio
     const top = 340;
     ctx.fillStyle = "#26394d"; ctx.fillRect(56, top - 30, W - 112, 34);
     const columns: Array<[string, number, CanvasTextAlign]> = [
-      ["成交时间 · 北京", 70, "left"], ["标的 / 类别", 315, "left"], ["方向", 570, "left"],
+      ["成交时间 · 美东", 70, "left"], ["标的 / 类别", 315, "left"], ["方向", 570, "left"],
       ["数量", 700, "right"], ["成交价", 860, "right"], ["成交额", 1010, "right"],
       ["手续费", 1160, "right"], ["成交资金流", 1360, "right"],
     ];

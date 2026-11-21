@@ -10,7 +10,13 @@ const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET() {
   try {
-    const rows = await getDb().select().from(trades).orderBy(desc(trades.tradeDate), desc(sql`coalesce(${trades.executionDate}, ${trades.tradeDate})`), desc(trades.time)).limit(10000);
+    const rows = await getDb().select().from(trades).orderBy(
+      desc(trades.tradeDate),
+      desc(sql`nullif(${trades.time}, '') is not null`),
+      desc(sql`coalesce(${trades.executionDate}, ${trades.tradeDate})`),
+      desc(trades.time),
+      trades.key,
+    ).limit(10000);
     return Response.json({ trades: rows }, { headers });
   } catch {
     return Response.json({ error: "成交数据暂不可用" }, { status: 503, headers });
